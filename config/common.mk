@@ -63,6 +63,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
     keyguard.no_require_sim=true \
     ro.url.legal=http://www.google.com/intl/%s/mobile/android/basic/phone-legal.html \
     ro.url.legal.android_privacy=http://www.google.com/intl/%s/mobile/android/basic/privacy.html \
+    ro.com.google.clientidbase=android-google \
     ro.com.android.wifi-watchlist=GoogleGuest \
     ro.setupwizard.enterprise_mode=1 \
     ro.com.android.dateformat=MM-dd-yyyy \
@@ -165,6 +166,7 @@ PRODUCT_PACKAGES += \
     audio_effects.conf \
     CMWallpapers \
     Apollo \
+    CMUpdater \
     CMFileManager \
     LockClock \
     CMAccount
@@ -219,25 +221,41 @@ PRODUCT_VERSION_MAJOR = 10
 PRODUCT_VERSION_MINOR = 2
 PRODUCT_VERSION_MAINTENANCE = 0-RC0
 
-# Set CM_BUILDTYPE
-ifdef CM_NIGHTLY
-    CM_BUILDTYPE := NIGHTLY
+# Set CM_BUILDTYPE from the env RELEASE_TYPE, for jenkins compat
+
+ifndef CM_BUILDTYPE
+    ifdef RELEASE_TYPE
+        # Starting with "CM_" is optional
+        RELEASE_TYPE := $(shell echo $(RELEASE_TYPE) | sed -e 's|^CM_||g')
+        CM_BUILDTYPE := $(RELEASE_TYPE)
+    endif
 endif
-ifdef CM_EXPERIMENTAL
-    CM_BUILDTYPE := EXPERIMENTAL
-endif
-ifdef CM_RELEASE
-    CM_BUILDTYPE := RELEASE
+
+# Filter out random types, so it'll reset to UNOFFICIAL
+ifeq ($(filter RELEASE NIGHTLY SNAPSHOT EXPERIMENTAL,$(CM_BUILDTYPE)),)
+    CM_BUILDTYPE :=
 endif
 
 ifdef CM_BUILDTYPE
-    ifdef CM_EXTRAVERSION
-        # Force build type to EXPERIMENTAL
-        CM_BUILDTYPE := EXPERIMENTAL
-        # Remove leading dash from CM_EXTRAVERSION
-        CM_EXTRAVERSION := $(shell echo $(CM_EXTRAVERSION) | sed 's/-//')
-        # Add leading dash to CM_EXTRAVERSION
-        CM_EXTRAVERSION := -$(CM_EXTRAVERSION)
+    ifneq ($(CM_BUILDTYPE), SNAPSHOT)
+        ifdef CM_EXTRAVERSION
+            # Force build type to EXPERIMENTAL
+            CM_BUILDTYPE := EXPERIMENTAL
+            # Remove leading dash from CM_EXTRAVERSION
+            CM_EXTRAVERSION := $(shell echo $(CM_EXTRAVERSION) | sed 's/-//')
+            # Add leading dash to CM_EXTRAVERSION
+            CM_EXTRAVERSION := -$(CM_EXTRAVERSION)
+        endif
+    else
+        ifndef CM_EXTRAVERSION
+            # Force build type to EXPERIMENTAL, SNAPSHOT mandates a tag
+            CM_BUILDTYPE := EXPERIMENTAL
+        else
+            # Remove leading dash from CM_EXTRAVERSION
+            CM_EXTRAVERSION := $(shell echo $(CM_EXTRAVERSION) | sed 's/-//')
+            # Add leading dash to CM_EXTRAVERSION
+            CM_EXTRAVERSION := -$(CM_EXTRAVERSION)
+        endif
     endif
 else
     # If CM_BUILDTYPE is not defined, set to UNOFFICIAL
@@ -245,13 +263,13 @@ else
     CM_EXTRAVERSION :=
 endif
 
-ifdef CM_RELEASE
+ifeq ($(CM_BUILDTYPE), RELEASE)
     CM_VERSION := $(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR).$(PRODUCT_VERSION_MAINTENANCE)$(PRODUCT_VERSION_DEVICE_SPECIFIC)-$(CM_BUILD)
 else
     ifeq ($(PRODUCT_VERSION_MINOR),0)
-        CM_VERSION := $(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR).$(PRODUCT_VERSION_MAINTENANCE).$(CM_BUILD).$(CM_BUILDTYPE).$(shell date -u +%m%d%Y)
+        CM_VERSION := $(PRODUCT_VERSION_MAJOR)-$(shell date -u +%Y%m%d)-$(CM_BUILDTYPE)$(CM_EXTRAVERSION)-$(CM_BUILD)
     else
-        CM_VERSION := $(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR).$(PRODUCT_VERSION_MAINTENANCE).$(CM_BUILD).$(CM_BUILDTYPE).$(shell date -u +%m%d%Y)
+        CM_VERSION := $(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR).$(PRODUCT_VERSION_MAINTENANCE)-$(shell date -u +%m%d%Y)-$(CM_BUILDTYPE)$(CM_EXTRAVERSION)-$(CM_BUILD)
     endif
 endif
 
@@ -261,3 +279,4 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 -include vendor/cm/sepolicy/sepolicy.mk
 -include $(WORKSPACE)/hudson/image-auto-bits.mk
+
