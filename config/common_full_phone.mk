@@ -5,7 +5,7 @@ $(call inherit-product, vendor/cm/config/common_full.mk)
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.config.ringtone=somebodys.ogg \
     ro.config.notification_sound=Heaven.ogg \
-    ro.config.alarm_alert=Hassium.ogg
+    ro.config.alarm_alert=Helium.ogg
 
 ifeq ($(TARGET_SCREEN_WIDTH) $(TARGET_SCREEN_HEIGHT),$(space))
     PRODUCT_COPY_FILES += \
